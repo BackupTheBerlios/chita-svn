@@ -1,6 +1,6 @@
 Despues de mucho hablar y deliberar sobre lo que iba a tratar nuestro proyecto:
 
-Se bajaron varias ideas que detallo a continuación:
+Se barajaron varias ideas que detallo a continuación:
 
 -Cliente bittorrent c# 
 -Port de Pymusique a c#
