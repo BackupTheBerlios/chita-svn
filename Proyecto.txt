@@ -7,5 +7,5 @@ Se barajaron varias ideas que detallo a continuación:
 -Port de Pymusique a c#
 -Cliente RSS
 -Compilador bajo asp.net que en vez de gestionar html,gestione Flash.
--Mierda pinchada en un palo en C#
+
 
