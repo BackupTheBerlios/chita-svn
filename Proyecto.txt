@@ -2,7 +2,8 @@ Despues de mucho hablar y deliberar sobre lo que iba a tratar nuestro proyecto:
 
 Se barajaron varias ideas que detallo a continuación:
 
--Cliente bittorrent c# 
+-Cliente jabber c# 
 -Port de Pymusique a c#
 -Cliente RSS
 -Compilador bajo asp.net que en vez de gestionar html,gestione Flash.
+
