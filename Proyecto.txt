@@ -9,7 +9,7 @@ Se barajaron varias ideas que detallo a continuación:
 -Compilador bajo asp.net que en vez de gestionar html,gestione Flash.
 -Cliente IRC
 -Chat de voz
-
+-Cliente Messenger
 
 
 Mejoras Novedades:
