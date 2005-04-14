@@ -1,0 +1,578 @@
+
+
+
+
+
+Network Working Group                                             C.Calt
+Request For Comments: 2810                                    Abril 2000
+Actualizaciones: 1459 Categoría: Información
+
+                Charla Basada en Internet: Arquitectura
+
+Estado de este memorándum
+
+   Este memo da información para la comunidad Internet. No especifica un
+   estándar de Internet. La distribución de este memorándum es
+   ilimitada.
+
+Aviso de Copyright
+
+   Copyright (C) The Internet Society 2000. Todos los derechos
+   reservados.
+
+Resumen
+
+   El protocolo IRC (Internet Relay Chat, Charla Basada en Internet) se
+   usa para conferencias basadas en texto. Se ha desarrollado desde 1989
+   cuando se implementó inicialmente como una forma de comunicación
+   entre usuarios de una BBS.
+
+   Fue documentado formalmente por primera vez en Mayo de 1993 por el
+   RFC 1459 [IRC], y ha evolucionado constantemente. Este documento es
+   una actualización que describe la arquitectura actual del protocolo
+   IRC y el papel de sus diferentes componentes. Otros documentos
+   describen en detalle el protocolo usado entre los componentes que se
+   definen aquí.
+
+Índice
+
+   1. Introducción .................................................. 2
+   2. Componentes ................................................... 3
+     2.1. Servidores ................................................ 3
+     2.2. Clientes .................................................. 3
+       2.2.1. Clientes de usuario ................................... 3
+       2.2.2. Clientes de servicio .................................. 3
+   3. Arquitectura .................................................. 4
+   4. Servicios del Protocolo IRC ................................... 4
+     4.1. Localización de clientes .................................. 4
+     4.2. Transmisión de mensajes ................................... 5
+     4.3. Hospedaje y mantenimiento de canales ...................... 5
+   5. Conceptos de IRC .............................................. 5
+     5.1. Comunicación uno-a-uno .................................... 6
+     5.2. Uno-a-muchos .............................................. 6
+       5.2.1. A un canal ............................................ 6
+
+
+
+Kalt                           Información                      [Pág. 1]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+       5.2.2. A una máscara de host/servidor ........................ 7
+       5.2.3. A una lista ........................................... 7
+     5.3. Uno-a-todos ............................................... 8
+       5.3.1. Cliente-a-cliente ..................................... 8
+       5.3.2. Cliente-a-servidor .................................... 8
+       5.3.3. Servidor-a-servidor ................................... 8
+   6. Problemas actuales ............................................ 8
+     6.1. Escalabilidad ............................................. 9
+     6.2. Fiabilidad ................................................ 9
+     6.3. Congestionamiento de servidores ........................... 9
+     6.4. Privacidad ................................................ 9
+   7. Consideraciones sobre seguridad ...............................10
+   8. Soporte y disponibilidad actual ...............................10
+   9. Reconocimientos ...............................................10
+   10. Referencias ..................................................11
+   11. Dirección del autor ..........................................11
+   12. Dirección del traductor ......................................11
+
+
+1. Introducción
+
+   El protocolo IRC se ha desarrollado a través de algunos años para
+   usarse en conferencia basada en texto. Este documento describe su
+   arquitectura actual.
+
+   El protocolo IRC se basa en el modelo cliente-servidor y es adecuado
+   para funcionar sobre varias máquinas de un modo distribuido. Una con­
+   figuración típica involucra un proceso único (el servidor) que actúa
+   como punto central para los clientes (u otros servidores) que se
+   conectan a él, realizando el multiplexado y envío de mensajes nece­
+   sarios así como otras funciones.
+
+   Este modelo distribuido, que requiere que cada servidor tenga una
+   copia de la información sobre el estado global, es uno de los mayores
+   problemas de este protocolo ya que es un serio hándicap que limita el
+   tamaño máximo de una red. Si las redes existentes han conseguido ir
+   creciendo a pasos agigantados, es gracias a los fabricantes de hard­
+   ware que nos han dado sistemas más potentes.
+
+
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 2]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+2. Componentes
+
+   Los siguientes párrafos describen los componentes básicos del proto­
+   colo IRC.
+
+
+2.1. Servidores
+
+   El servidor forma la espina dorsal del IRC ya que es el único compo­
+   nente capaz de enlazar los demás componentes: proporciona un punto al
+   que los clientes se conectan para hablar [CLIENTE-IRC], y un punto al
+   que los otros servidores se conectan [SERVIDOR-IRC]. El servidor
+   también es el responsable de dar los servicios básicos definidos por
+   el protocolo IRC.
+
+
+2.2. Clientes
+
+   Un cliente es cualquier cosa que se conecte al servidor, si no es
+   otro servidor. Hay dos tipos de clientes que sirven para distintos
+   propósitos.
+
+
+2.2.1. Clientes de usuario
+
+   Los clientes de usuario son generalmente programas que proporcionan
+   una interfaz de texto que se usa para comunicarse de forma interac­
+   tiva via IRC. A menudo se refiere a este tipo particular de clientes
+   como "usuarios".
+
+
+2.2.2. Clientes de servicio
+
+   Al contrario que los usuarios, los clientes de servicio no están des­
+   tinados a usarse manualmente ni para hablar. Tienen un acceso a las
+   funciones de charla del protocolo más limitado, mientras que
+   opcionalmente tienen acceso a más datos privados de los servidores.
+
+   Los servicios son típicamente autómatas que se usan para proporcionar
+   algún tipo de servicio (no necesariamente relacionado con el IRC) a
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 3]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+   los usuarios. Un ejemplo es un servicio que recolecta datos sobre el
+   origen de los usuarios conectados a la red de IRC.
+
+
+
+3. Arquitectura
+
+   Una red de IRC está definida como un grupo de servidores conectados
+   entre ellos. Un único servidor forma la red de IRC más simple.
+
+   La única configuración permitida para los servidores de IRC es la de
+   un árbol donde cada servidor actúa de nodo central para el resto de
+   la red que él "ve".
+
+                       1--\
+                           A        D---4
+                       2--/ \      /
+                             B----C
+                            /      \
+                           3        E
+
+         Servidores: A, B, C, D, E         Clientes: 1, 2, 3, 4
+
+             [ Fig. 1. Ejemplo de una red de IRC pequeña ]
+
+   El protocolo IRC no proporciona medios para comunicación directa
+   entre clientes. Toda la comunicación entre clientes está basada en el
+   servidor o servidores.
+
+
+
+4. Servicios del Protocolo IRC
+
+   Esta sección describe los servicios que ofrece el protocolo IRC. La
+   combinación de estos servicios permite la conferencia en tiempo real.
+
+
+4.1. Localización de clientes
+
+   Para intercambiar mensajes, los clientes deben poder localizarse
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 4]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+   entre ellos.
+
+   Al conectarse a un servidor, un cliente se registra usando una eti­
+   queta que luego usan los demás servidores y los clientes para saber
+   dónde se encuentra el cliente. Los servidores son los responsables de
+   saber todas las etiquetas que se están usando.
+
+
+4.2. Transmisión de mensajes
+
+   El protocolo IRC no proporciona medios para comunicación directa
+   entre clientes. Toda la comunicación entre clientes está basada en el
+   servidor o servidores.
+
+
+4.3. Hospedaje y mantenimiento de canales
+
+   Un canal es un grupo con nombre de uno o más usuarios que recibirán
+   todos los mensajes dirigidos a ese canal. Un canal se caracteriza por
+   su nombre y sus integrantes, y tiene algunas características que
+   pueden ser manipuladas por (algunos de) sus miembros.
+
+   Los canales proporcionan un medio para enviar un mensaje a varios
+   clientes. Los servidores alojan los canales, proporcionando el multi­
+   plexado de mensajes necesario. Los servidores también son respons­
+   ables del mantenimiento de los canales conociendo en todo momento a
+   los integrantes del canal. El papel exacto de los servidores se
+   define en "Charla Basada en Internet: Mantenimiento de Canales"
+   [CANALES-IRC].
+
+
+
+5. Conceptos de IRC
+
+   Esta sección está dedicada a describir los conceptos tras la organi­
+   zación del protocolo IRC y cómo se envían las diferentes clases de
+   mensajes.
+
+
+
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 5]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+5.1. Comunicación uno-a-uno
+
+   La base de la comunicación uno-a-uno la realizan normalmente los
+   clientes, ya que la mayor parte del tráfico servidor-servidor no es
+   el resultado de la comunicación entre los servidores. Para propor­
+   cionar un medio de que los clientes puedan hablar entre ellos, se
+   REQUIERE que todos los servidores puedan enviar un mensaje exacta­
+   mente en una dirección a lo largo del árbol para que alcance
+   cualquier cliente. Por tanto, el camino de envío de un mensaje es el
+   más corto posible entre dos puntos a lo largo del árbol que conforma
+   la red.
+
+   Los siguientes ejemplos se refieren a la Figura 1 de arriba.
+
+     Ejemplo 1: Un mensaje entre los clientes 1 y 2 sólo lo ve el servi­
+     dor A, que lo envía directamente al cliente 2.
+
+     Ejemplo 2: Un mensaje entre los clientes 1 y 3 sólo lo ven los
+     servidores A y B, y el cliente 3. Los demás clientes y servidores
+     no pueden ver ese mensaje.
+
+     Ejemplo 3: Un mensaje entre los clientes 2 y 4 sólo lo pueden ver
+     los servidores A, B, C y D y el cliente 4.
+
+
+5.2. Uno-a-muchos
+
+   El principal cometido del IRC es proporcionar un foro que permita una
+   forma de conferencia fácil y eficiente (conversaciones uno a muchos).
+   El IRC ofrece muchas formas de hacer esto, cada uno para su propio
+   propósito.
+
+
+5.2.1. A un canal
+
+   En el IRC un canal tiene el papel equivalente al que tiene un foro de
+   discusión; su existencia es dinámica y la conversación mantenida en
+   un canal DEBE enviarse únicamente a los servidores que soportan
+   usuarios en ese canal. Además, el mensaje se enviará una sola vez a
+   cada enlace local ya que cada servidor es responsable de distribuir
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 6]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+   el mensaje original para asegurar que alcanzará a todos los recep­
+   tores.
+
+   Todos los ejemplos a continuación se refieren a la Figura 1.
+
+     Ejemplo 4: Un canal con un sólo cliente en él. Los mensajes al
+     canal van al servidor y a ningún sitio más.
+
+     Ejemplo 5: Hay dos clientes en un canal. Todos los mensajes
+     atraviesan el mismo camino que si fueran mensajes privados entre
+     dos clientes fuera del canal.
+
+     Ejemplo 6: Los clientes 1,2 y 3 están en un canal. Todos los men­
+     sajes al canal se envían a todos los clientes y sólo a los servi­
+     dores que debe atravesar el mensaje si el mensaje fuese privado. Si
+     el cliente 1 envía un mensaje, va al cliente 2 y, via el servidor
+     B, al cliente 3.
+
+
+5.2.2. A una máscara de host/servidor
+
+   Para proporcionar un mecanismo de envío de mensajes a un grupo grande
+   de usuarios relacionados, están disponibles los mensajes a máscaras
+   de host y servidor. Estos mensajes se envían a los usuarios cuya
+   información de host o servidor coincida con la de la máscara. Los
+   mensajes sólo se envían a los sitios donde se encuentran los usuar­
+   ios, de forma similar a los canales.
+
+
+5.2.3. A una lista
+
+   El estilo menos eficiente de comunicación uno-a-muchos es a través de
+   clientes que hablan con una "lista" de objetivos (cliente, canal,
+   máscara). La forma en que se hace esto es casi autoexplicativa: el
+   cliente da una lista de destinos para el mensaje y el servidor la
+   parte y distribuye una copia del mensaje por separado a cada destino.
+
+   Esto no es tan eficiente como usar un canal ya que la lista de desti­
+   nos PUEDE estar dividida y que se envíe el paquete sin asegurarse que
+   no se envían duplicados por cada camino.
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 7]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+5.3. Uno-a-todos
+
+   El tipo de mensaje uno-a-todos se describe mejor como un mensaje de
+   difusión, enviado a todos los clientes, servidores o ambos. En una
+   red grande con muchos usuarios, un único mensaje puede originar mucho
+   tráfico al intentar que el mensaje alcance a todos sus destinatarios.
+
+   Para algunas clases de mensajes, no hay más opción que enviarlos a
+   todos los servidores para que la información de estado mantenida por
+   cada servidor sea consistente entre los servidores.
+
+
+5.3.1. Cliente-a-cliente
+
+   No hay ninguna clase de mensaje tal que, de un sólo mensaje, resulte
+   en un envío de un mensaje a todos los demás clientes.
+
+
+5.3.2. Cliente-a-servidor
+
+   La mayoría de los comandos que resulta en un cambio en la información
+   de estado (como pertenencia a un canal, modo de canal, estado de
+   usuario, etc.) DEBE enviarse a todos los servidores por defecto, y
+   esta distribución NO SERÁ CAMBIADA por el cliente.
+
+
+5.3.3. Servidor-a-servidor
+
+   Aunque la mayoría de los mensajes entre servidores se distribuyen a
+   todos los demás servidores, esto sólo es necesario para los mensajes
+   que afectan a un usuario, canal o servidor. Dado que estos son los
+   ítems básicos en el IRC, casi todos los mensajes que se originan en
+   un servidor se envían a todos los demás servidores conectados.
+
+
+
+6. Problemas actuales
+
+   Hay una serie de problemas reconocidos con este protocolo. Esta
+   sección sólo se refiere a los problemas relacionados con la
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 8]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+   arquitectura del protocolo.
+
+
+6.1. Escalabilidad
+
+   Es ampliamente conocido que este protocolo no escala lo suficiente
+   cuando se usa en un escenario muy grande. El problema principal viene
+   del requisito que todos los servidores tengan que saber sobre los
+   demás servidores, clientes y canales y que la información con­
+   cerniente a ellos sea actualizada tan pronto como cambie.
+
+
+6.2. Fiabilidad
+
+   Dado que la única configuración permitida para una red de IRC es un
+   árbol, cada punto de enlace entre dos servidores es un punto de fallo
+   obvio y bastante serio. Este aspecto en particular se trata con mayor
+   detalle en "Charla Basada en Internet: Protocolo de Servidor" [SERVI­
+   DOR-IRC].
+
+
+6.3. Congestionamiento de servidores
+
+   Otro problema, relacionado con la escalabilidad, la fiabilidad y
+   también con la arquitectura de árbol, es que el protocolo IRC y la
+   arquitectura usada son extremadamente vulnerables a las congestiones
+   de red. Este problema es endémico, y debería resolverse para la
+   próxima generación: si la congestión y el elevado volumen de tráfico
+   ocasionan la caída de un enlace entre dos servidores, no sólo el
+   fallo genera más tráfico en la red, sino que también la reconexión de
+   dos servidores (normalmente desde otro lugar) genera más tráfico.
+
+   En un intento de minimizar el impacto de estos problemas, se
+   RECOMIENDA encarecidamente que los servidores no intenten reconectar
+   demasiado rápido para evitar agravar aún más la situación.
+
+
+6.4. Privacidad
+
+   Aparte de no escalar bien, el hecho de que los servidores necesiten
+
+
+
+
+
+
+
+Kalt                           Información                      [Pág. 9]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+   conocer toda la información sobre otras entidades, el aspecto de la
+   privacidad es también algo a tener en cuenta. Esto es en particular
+   cierto para los canales, ya que la información relacionada es bas­
+   tante más reveladora que el saber si un usuario está conectado o no.
+
+
+
+7. Consideraciones sobre seguridad
+
+   Dejando de un lado las consideraciones sobre privacidad de la sección
+   6.4 (Privacidad), se considera irrelevante la seguridad en este docu­
+   mento.
+
+
+
+8. Soporte y disponibilidad actual
+
+     Listas de correo para discusiones sobre IRC:
+        Discusión general: ircd-users@irc.org
+        Desarrollo del protocolo: ircd-dev@irc.org
+
+     Implementaciones del software:
+        ftp://ftp.irc.org/irc/server
+        ftp://ftp.funet.fi/pub/unix/irc
+        ftp://coombs.anu.edu.au/pub/irc
+
+     Grupo de noticias: alt.irc
+
+
+
+9. Reconocimientos
+
+   Partes de este documento se han copiado del RFC 1459 [IRC] que docu­
+   mento formalmente por primera vez el protocolo IRC. También se ha
+   visto beneficiada por varias rondas de revisiones y comentarios. En
+   particular, las siguientes personas han hecho contribuciones signi­
+   ficativas a este documento:
+
+   Matthew Green, Michael Neumayer, Volker Paulsen, Kurt Roeckx, Vesa
+   Ruokonen, Magnus Tjernstrom, Stefan Zehl.
+
+
+
+
+
+
+
+Kalt                           Información                     [Pág. 10]
+
+RFC 2810         Charla Basada en Internet: Arquitectura      Abril 2000
+
+
+10. Referencias
+
+   [PALABRAS CLAVE]   Bradner, S., "Key words for use in RFCs to Indi­
+   cate Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [IRC]              Oikarinen, J. and D. Reed (Trad. Carlos García
+   Argos), "Protocolo de Charla Basado en Internet", RFC 1459, May 1993.
+
+   [CLIENTE-IRC]      Kalt, C., "Internet Relay Chat: Client Protocol",
+   RFC 2812, April 2000.
+
+   [SERVIDOR-IRC]     Kalt, C., "Internet Relay Chat: Server Protocol",
+   RFC 2813, April 2000.
+
+   [CANALES-IRC]      Kalt, C., "Internet Relay Chat: Channel Manage­
+   ment", RFC 2811, April 2000.
+
+
+
+11. Dirección del autor
+
+   Christophe Kalt
+   99 Teaneck Rd, Apt #117
+   Ridgefield Park, NJ 07660
+   Estados Unidos
+
+   Correo Electrónico: kalt@stealth.net
+
+
+12. Dirección del traductor
+
+   Carlos García Argos
+   C/Antonio Trueba, 14 4-8-2
+   29017 Málaga
+   España
+
+   Correo Electrónico: cgasoft@yahoo.com
+
+
+
+
+
+
+
+
+
+
+Kalt                           Información                     [Pág. 11]
+
